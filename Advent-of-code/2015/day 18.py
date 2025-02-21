@@ -1,58 +1,48 @@
-
+import numpy as np
+import cv2
 from utils.utils import is_index_valid, parse_grid, get_8_dirs
 
 
+def change_grid_to_bin(grid):
+    return np.array([[1 if cell == "#" else 0 for cell in row] for row in grid], dtype=np.uint8)
+
 def calculate_next_value(i, j, grid):
-    n, m = len(grid), len(grid[0])
+    n, m = grid.shape
     directions = get_8_dirs()
-    lights_count = 0
-    for di, dj in directions:
-         if is_index_valid(i+di, j+dj, n, m) and grid[i+di][j+dj] == "#":
-             lights_count += 1
+    lights_count = sum(grid[i + di, j + dj] for di, dj in directions if is_index_valid(i + di, j + dj, n, m))
 
-    if grid[i][j] == "#":
-        return "#" if 2 <= lights_count <= 3 else "."
+    if grid[i, j] == 1:
+        return 1 if 2 <= lights_count <= 3 else 0
+    return 1 if lights_count == 3 else 0
 
-    return "#" if lights_count == 3 else "."
+def simulate_game(grid, steps=100):
+    n, m = grid.shape
+    corners = [(0, 0), (0, m - 1), (n - 1, 0), (n - 1, m - 1)]
 
+    frames = [grid.copy()]
 
-def flip_lights(grid):
-    n, m = len(grid), len(grid[0])
-    corners = [(0, 0), (0, m-1), (n-1, 0), (n-1, m-1)]
-    for i, j in corners:
-        grid[i][j] = "#"
-
-    next_grid = [[0 for _ in range(n)] for _ in range(m)]
-    for _ in range(100):
+    for _ in range(steps):
+        next_grid = grid.copy()
         for i in range(n):
             for j in range(m):
                 if (i, j) not in corners:
-                    next_grid[i][j] = calculate_next_value(i, j, grid)
+                    next_grid[i, j] = calculate_next_value(i, j, grid)
                 else:
-                    next_grid[i][j] = "#"
+                    next_grid[i, j] = 1
+
         grid = next_grid.copy()
-        next_grid = [[0 for _ in range(n)] for _ in range(m)]
-    return grid
+        frames.append(grid.copy())
 
-def count_on(grid):
-    n, m = len(grid), len(grid[0])
-    count = 0
-    for i in range(n):
-        for j in range(m):
-            if grid[i][j] == "#":
-                count += 1
-    return count
+    return frames
 
-def print_matrix(matrix):
-    for i in range(len(matrix)):
-        print(''.join(matrix[i]))
-    print()
+grid = change_grid_to_bin(parse_grid())
+frames = simulate_game(grid)
+for frame in frames:
+    img = (frame * 255).astype(np.uint8)
+    img_resized = cv2.resize(img, (500, 500), interpolation=cv2.INTER_NEAREST)
 
-def main():
-    grid = parse_grid()
-    grid_after_steps = flip_lights(grid)
-    print(count_on(grid_after_steps))
+    cv2.imshow("Game of Life", img_resized)
+    if cv2.waitKey(100) & 0xFF == ord("q"):
+        break
 
-
-if __name__ == '__main__':
-    main()
+cv2.destroyAllWindows()
