@@ -1,9 +1,10 @@
+import numpy as np
+from PIL import Image, ImageDraw
 
 def calculate_position(x, y, vx, vy, t, n, m):
     nx = (x + t * vx) % n
     ny = (y + t * vy) % m
-    return nx, ny
-
+    return int(nx), int(ny)
 
 def parse_line(line):
     p, v = line.split(' ')
@@ -13,36 +14,35 @@ def parse_line(line):
     vx, vy = int(v[0].strip()), int(v[1].strip())
     return px, py, vx, vy
 
-
-def init_grid(n,m):
-    return [['.' for _ in range(n)] for _ in range(m)]
-
-
-def print_grid(grid):
-    for i in range(len(grid)):
-        print(''.join(grid[i]))
-
-
 def main():
-    t = 100
+    k = 7858 # solution to 103x - 101y = (h_c - v_c)
     n, m = 101, 103
-    q1, q2, q3, q4 = 0, 0, 0, 0
-    with (open('input.txt') as f):
-        lines = f.readlines()
-        robots = []
-        for line in lines:
-            px, py, vx, vy = parse_line(line)
-            robots.append((px, py, vx, vy))
-            
-            tpx, tpy = calculate_position(px, py, vx, vy, t, n, m)
-            if tpx < (n //2) and tpy < (m // 2):
-                q1 += 1
-            elif tpx > (n //2) and tpy < (m // 2):
-                q2 += 1
-            elif tpx < (n // 2) and tpy > (m // 2):
-                q3 += 1
-            elif tpx > (n // 2) and tpy > (m // 2):
-                q4 += 1
-        print(q1 * q2 * q3 * q4)
 
-main()
+    with open('input.txt') as f:
+        lines = f.readlines()
+
+    robots = [parse_line(line) for line in lines]
+
+    frames = []
+    arr = np.ones((n, m), dtype=np.uint8) * 255
+    for (px, py, vx, vy) in robots:
+        tpx, tpy = calculate_position(px, py, vx, vy, k, n, m)
+        arr[tpx, tpy] = 0
+
+    img = Image.fromarray(arr, mode="L").convert("RGB")
+    draw = ImageDraw.Draw(img)
+    draw.text((5, 5), f"Step {k}", fill=(255, 0, 0))
+
+    frames.append(img)
+
+    frames[0].save(
+        "robots2.gif",
+        save_all=True,
+        append_images=frames[1:],
+        duration=200,
+        loop=0
+    )
+    print("Saved GIF")
+
+if __name__ == "__main__":
+    main()
